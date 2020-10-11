@@ -60,3 +60,22 @@ else
     fprintf('TOTAL DAILY PASSENGERS: %d\n', selection * trains_table.daily_passengers);
 end
 disp('*********************************************')
+
+%histogram result
+% run ga:
+disp('****HISTOGRAM STARTING*****');
+res = [];
+for i = 1:20
+    options = optimoptions('ga','display','off');
+    [selection, selection_fitness] = ga(fit_func,chromosome_length,A,b,...
+                                        [],[],Lb,Ub,[],int_indices);
+    fprintf('Best fitness for this run = %d\n', abs(selection_fitness));
+    res = [res, abs(selection_fitness)];
+end
+
+%display histogram result
+his_res = categorical(res);
+h = histogram(his_res,'BarWidth',0.5);
+high_frequency = mode(res);
+fprintf('TOTAL DAILY PASSENGERS: %d\n', high_frequency);
+disp('****HISTOGRAM Finished****');
