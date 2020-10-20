@@ -23,6 +23,7 @@ import pandas as pd
 import time
 from datetime import datetime
 from tensorflow import keras
+import matplotlib.pyplot as plt
 
 # import print_weights as pw
 # call: pw.print_weights()
@@ -116,6 +117,28 @@ if option == '1':
     model.compile(optimizer='adam', loss='mean_squared_error')
     ## train the ANN model using 1000 iterations
     model.fit(X, Y, epochs=1000)
+
+    # record the frequency of the loss
+    figure, ax = plt.subplots(2, 2, figsize=(10, 5))
+    for (i, lnrate) in enumerate([0.1, 0.01, 0.001, 0.0001]):
+        loss = []
+        for j in range(10):
+            opt = keras.optimizers.Adam(learning_rate=lnrate)
+            model.compile(optimizer=opt, loss='mean_squared_error')
+            model.fit(X, Y, epochs=1000)
+            loss.append(model.evaluate(X, Y))
+        print(loss)
+        ax[i // 2, i % 2].hist(loss, bins=5, edgecolor='black')
+        # display y label
+        ax[i // 2, i % 2].set_xlabel("Loss")
+        # display x label
+        ax[i // 2, i % 2].set_ylabel("Frequency")
+        # display title
+        ax[i // 2, i % 2].set_title("Learning Rate: " + str(lnrate))
+
+    plt.tight_layout()
+    plt.savefig("Newark_histogram.png")
+    plt.show()
 
     print('\n\n********** ANN training complete **********\n\n')
 elif option == '2':
