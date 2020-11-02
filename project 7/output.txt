@@ -1,0 +1,4 @@
+2020-11-02 percentage of times correct prediction: 14.3 %  with error 0.3%
+2020-11-02 percentage of times correct prediction: 28.6 %  with error 2.1%
+2020-11-02 percentage of times correct prediction: 57.1 %  with error 23.0%
+2020-11-02 percentage of times correct prediction: 42.9 %  with error 1.9%
