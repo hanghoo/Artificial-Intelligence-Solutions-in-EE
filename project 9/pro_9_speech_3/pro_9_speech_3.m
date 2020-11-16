@@ -4,9 +4,9 @@
 %
 % Instructor            : Prof. Uyar
 %
-% Student 1 Name        : James Bond
-% Student 1 CCNY email  : jbond007
-% Student 1 Log In Name : ee6530_007
+% Student 1 Name        : Hang Hu
+% Student 1 CCNY email  : hhu002
+% Student 1 Log In Name : ee6530_03
 % Student 2 Name        : 
 % Student 2 CCNY email  :
 % Student 2 Log In Name : 
@@ -228,7 +228,7 @@ function net = CNN_Train(train_dir)
 
     % load the training audio dataset into ads_train.
     % train_dir contains the path to the dataset:
-    
+    adsTrain = audioDatastore(train_dir, 'IncludeSubfolders', true, 'LabelSource', 'foldernames');
     
     
     
@@ -242,67 +242,82 @@ function net = CNN_Train(train_dir)
     
     % convert the audio samples into images by generating their
     % spectrograms:
-    
+    spectrograms = speechSpectrograms(adsTrain, segmentDuration, frameDuration, hopDuration, numBands, fs);
     
     
     % create input and expected output matrices to train on:
-    
-    
+    XTrain = log10(spectrograms + epsil);
+    YTrain = adsTrain.Labels;
     
     % get the dimensions of XTrain:
-    
+    sz = size(XTrain);
     % set specSize to the height and width of a single spectrogram:
-    
+    specSize = sz(1:2);
     % append a depth of 1 to specsize to get the input size of the CNN:
-    
+    inputSize = [specSize 1];
     % get the total number of unique labels:
-    
+    numLabels = numel(categories(YTrain));
   
     % Define the architecture of the CNN
     layers = [
         % set the size of the input image as the size of a single
         % spectrogram:
-        
+        imageInputLayer(inputSize)
         
         % Add the following layers to the CNN:
         %     - CONV LAYER(size = 5x5, noof filters = 10)
+        convolution2dLayer(5,10,'Padding','same')
         %     - BATCH NORMALIZATION
+        batchNormalizationLayer
         %     - RELU
+        reluLayer
         %     - POOL(size = 2x2, stride = 2)
+        maxPooling2dLayer(2,'Stride',2,'Padding','same')
         %     - CONV LAYER(size = 5x5, noof filters = 25)
+        convolution2dLayer(5,25,'Padding','same')
         %     - BATCH NORMALIZATION
+        batchNormalizationLayer
         %     - RELU
+        reluLayer
         %     - POOL(size = 2x2, stride = 2)
+        maxPooling2dLayer(2,'Stride',2,'Padding','same')
         %     - CONV LAYER(size = 5x5, noof filters = 40)
+        convolution2dLayer(5,40,'Padding','same')
         %     - BATCH NORMALIZATION
+        batchNormalizationLayer
         %     - RELU
+        reluLayer
         %     - POOL(size = 2x2, stride = 2)
+        maxPooling2dLayer(2,'Stride',2,'Padding','same')
         %     - CONV LAYER(size = 5x5, noof filters = 55)
+        convolution2dLayer(5,55,'Padding','same')
         %     - BATCH NORMALIZATION
+        batchNormalizationLayer
         %     - RELU
+        reluLayer
         %     - POOL(size = 1x13, stride = 1)
-        
+        maxPooling2dLayer([1 13])
         
         
         % create the fully connected ANN ouput layer
         % the number of neurons in the output layer is equal to the number
         % of unique labels:
-        
+        fullyConnectedLayer(numLabels)
         
         % use a softmax layer to convert the outputs to a set of 
         % probalities where each output represents the probability that the
         % image is a corresponding label:
-        
+        softmaxLayer
         
         % add a classification layer to make each output mutually
         % exclusive, in other words there's only a single correct label for 
         % each image:
-        
+        classificationLayer
         ];
 
     % specify training parameters:
-    
+    options = trainingOptions('adam', 'InitialLearnRate', 3e-4, 'MaxEpochs', 25, 'Shuffle', 'every-epoch');
     
     % train the CNN:
-    
+    net = trainNetwork(XTrain, YTrain, layers, options);
 end
