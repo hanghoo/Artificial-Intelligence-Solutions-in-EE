@@ -1,0 +1,26 @@
+pro_9_speech_1: Group 1: ee59837_03, 11, 09
+pro_9_speech_2: Group 2: ee59837_12, 01, 06
+pro_9_speech_3: Group 3: ee59837_05, 04, 16
+pro_9_speech_4: Group 4: ee59837_02, 07, 13
+pro_9_speech_5: Group 5: ee59837_14, 08
+pro_9_speech_6: Group 6: ee59837_15, 10
+
+Group 1: from Chinese to Hindi
+Group 2: from Spanish to Russian
+Group 3: from Korean to Chinese
+Group 4: from Hindi to Korean
+Group 5: from Turkish to Spanish
+Group 6: from Russian to Turkish
+
+Translation incudes the following phrases:
+1. good morning
+2. thank you
+3. how much
+4. too expensive
+5. grocery store
+6. airport
+7. taxi stand
+8. restaurant
+9. bus stop
+10. good bye
+
