@@ -1,4 +1,4 @@
-clc;
+ clc;
 clear;
 
 % 1. good morning
