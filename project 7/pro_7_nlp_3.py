@@ -32,13 +32,14 @@ import pandas as pd
 import tensorflow as tf
 import re
 import matplotlib.pyplot as plt
-
+import earlystop
 
 # %% Function to remove punctuation and web links from tweets
 # @\S+|https?://\S+ - matches either a substring which starts with @
 # and contains non-whitespace characters \S+ OR a link(url) which
 # starts with http(s)://
 from typing import Any
+
 
 
 def clean_tweet(tweet):
@@ -76,17 +77,15 @@ df['created_at'] = pd.to_datetime(df['created_at']).dt.date
 # %% Data cleaning and processing
 # Choose keywords, count how many times each key word was used in tweets
 print('\n\n********** IDENTIFYING KEY WORDS **********\n\n')
-key_words = ['COVID', 'MacBook', 'iPhone', 'iPad', 'TikTok', 'Watch',
-             'Glass', 'AirPods', 'Google', 'Microsoft', 'Facebook', 'President', 'Android', 'AppleTV']
+# key_words = ['COVID', 'MacBook', 'iPhone', 'iPad', 'TikTok', 'Watch',
+#              'Glass', 'AirPods', 'Google', 'Microsoft', 'Facebook', 'President', 'Android', 'AppleTV']
+key_words = ['apple', 'ios', 'iphone', 'ipad', 'apps', 'ipad', 'users', 'gb', 'beta', 'software']
 df['noof_keywords'] = np.where(df.text.str.contains('|'.join(key_words)), 1, 0)
 for key_word in key_words:
     df[key_word] = np.where(df.text.str.contains(key_word), 1, 0)
 # list of invalid days: including federal holidays, days for when we have no data
-invalid_days = ['2020-08-03', '2020-08-04', '2020-08-05', '2020-08-06', '2020-08-07',
-                '2020-08-10', '2020-08-11', '2020-08-12', '2020-08-13', '2020-08-14',
-                '2020-08-17', '2020-08-18', '2020-08-19', '2020-08-20', '2020-08-21',
-                '2020-08-24', '2020-08-25', '2020-08-26', '2020-08-27', '2020-08-28']
-missing_days = []
+invalid_days = []
+missing_days = ['2020-08-31']
 noof_missing_days = len(missing_days)
 invalid_days = list(map(lambda x: str_to_date(x), invalid_days))
 
@@ -107,7 +106,7 @@ for index, row in df.iterrows():
 # group the data by date - aggregate all keywords used and sum them up.
 # for example, the tweets from the day mention 'dollar' multiple times, add
 #   them together.
-columns_to_aggregate = {'noof_keywords':'sum'}
+columns_to_aggregate = {'noof_keywords': 'sum'}
 for key_word in key_words:
     columns_to_aggregate[key_word] = 'sum'
 grouped_df = df.groupby(by='created_at').agg(columns_to_aggregate).reset_index()
@@ -126,7 +125,7 @@ for missing_day in missing_days:
 # this window is subject to change
 grouped_df['day_opening'] = snp_df['Open']
 grouped_df['units_traded'] = snp_df['Volume']
-days_to_predict = 0.35 * len(grouped_df) + noof_missing_days
+days_to_predict = 0.6 * len(grouped_df) + noof_missing_days
 
 # before putting any data into NN, we normalize the data (between 0 and 1)
 # Normailize only the open and volume traded (beacuse they are large compared
@@ -137,16 +136,17 @@ grouped_df['units_traded'] = normalize_column(grouped_df, 'units_traded')
 features = ['noof_keywords', 'day_opening', 'units_traded']
 features = features + key_words
 num_inputs = len(features)
-x = np.array(grouped_df[1:int(-1*days_to_predict)][features])
-y = np.array(snp_df[1:(int(-1*days_to_predict)+1)][['percent change']])  # type: Any
-#x = np.array(grouped_df[:int(days_to_predict)][features])
-#y = np.array(snp_df[:int(days_to_predict)][['percent change']])
+# x = np.array(grouped_df[1:int(-1*days_to_predict)][features])
+# y = np.array(snp_df[1:(int(-1*days_to_predict)+1)][['percent change']])  # type: Any
+x = np.array(grouped_df[:int(days_to_predict)][features][1:])
+y = np.array(snp_df[:int(days_to_predict)]['percent change'][1:])
 
+callbacks = [earlystop.EarlyStopByF1(snp_df, features, grouped_df, value = 0.66, verbose = 1, days_to_predict = days_to_predict, noof_missing_days = noof_missing_days)]
 neural_net = tf.keras.Sequential()
 
 # define the input layer
 ## add another hidden layer with 4 neurons to the NN
-neural_net.add(tf.keras.layers.Dense(4, activation='relu', input_shape=(num_inputs,)))
+neural_net.add(tf.keras.layers.Dense(20, activation='relu', input_shape=(num_inputs,)))
 ## add another hidden layer with 8 neurons to the NN
 neural_net.add(tf.keras.layers.Dense(8, activation='relu'))
 ## add an output layer with a single output (percent change)
@@ -156,29 +156,30 @@ neural_net.compile(optimizer='adam', loss='mean_absolute_error')
 
 ## train the ANN model using 1200 iterations
 print('\n\n********** Begin ANN training **********\n\n')
-neural_net.fit(x, y, epochs=1200)
+#neural_net.fit(x, y, epochs=100)
+history = neural_net.fit(x, y, epochs=500, verbose = 1, callbacks=callbacks)
 
 ## record the frequency of the loss beginning
-figure, ax = plt.subplots(2, 2, figsize=(10, 5))
-for (i, lnrate) in enumerate([0.1, 0.01, 0.001, 0.0001]):
-    loss = []
-    for j in range(10):
-        opt = tf.keras.optimizers.Adam(learning_rate=lnrate)
-        neural_net.compile(optimizer=opt, loss='mean_squared_error')
-        neural_net.fit(x, y, epochs=100)
-        loss.append(neural_net.evaluate(x, y))
-    print(loss)
-    ax[i // 2, i % 2].hist(loss, bins=5, edgecolor='black')
-    # display y label
-    ax[i // 2, i % 2].set_xlabel("Loss")
-    # display x label
-    ax[i // 2, i % 2].set_ylabel("Frequency")
-    # display title
-    ax[i // 2, i % 2].set_title("Learning Rate: " + str(lnrate))
+# figure, ax = plt.subplots(2, 2, figsize=(10, 5))
+# for (i, lnrate) in enumerate([0.1, 0.01, 0.001, 0.0001]):
+#     loss = []
+#     for j in range(10):
+#         opt = tf.keras.optimizers.Adam(learning_rate=lnrate)
+#         neural_net.compile(optimizer=opt, loss='mean_squared_error')
+#         neural_net.fit(x, y, epochs=1200)
+#         loss.append(neural_net.evaluate(x, y))
+#     print(loss)
+#     ax[i // 2, i % 2].hist(loss, bins=5, edgecolor='black')
+#     # display y label
+#     ax[i // 2, i % 2].set_xlabel("Loss")
+#     # display x label
+#     ax[i // 2, i % 2].set_ylabel("Frequency")
+#     # display title
+#     ax[i // 2, i % 2].set_title("Learning Rate: " + str(lnrate))
 
-plt.tight_layout()
-plt.savefig("histogram.png")
-plt.show()
+# plt.tight_layout()
+# plt.savefig("histogram.png")
+# plt.show()
 ## record the frequency of the loss ending
 
 weights = neural_net.get_weights()
@@ -211,7 +212,7 @@ for i in range(int(days_to_predict), int(noof_missing_days), -1):
         noof_correct_movement += 1
 
 percent_correct = (noof_correct_movement / noof_predictions) * 100
-print(f"ANN was correct in predicting the movement ", end = '')
+print(f"ANN was correct in predicting the movement ", end='')
 print(f"{((noof_correct_movement / noof_predictions) * 100):.2f}% of the time in",
       end='')
 print(f" {noof_predictions} predictions.")
